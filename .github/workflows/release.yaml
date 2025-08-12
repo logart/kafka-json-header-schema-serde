@@ -33,14 +33,14 @@ jobs:
 
       # Remove version from name
       - name: Build with Gradle
-        run: mv build/libs/kafka-json-header-schema-serde-*.jar build/libs/time-limiter.jar
+        run: mv build/libs/kafka-json-header-schema-serde-*.jar build/libs/kafka-json-header-schema-serde.jar
 
       # Upload the JAR to GitHub releases
       - name: Create Release and Upload JAR
         id: upload-release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/libs/time-limiter.jar
+          files: build/libs/kafka-json-header-schema-serde.jar
           fail_on_unmatched_files: true
         env:
           GITHUB_ACTOR: ${{ secrets.GITHUB_ACTOR }}
