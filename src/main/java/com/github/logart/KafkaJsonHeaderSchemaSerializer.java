@@ -13,7 +13,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package org.logart;
+package com.github.logart;
 
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static org.logart.JsonHeaderSchemaConverter.X_JSON_HEADER_SCHEMA_ID;
+import static com.github.logart.JsonHeaderSchemaConverter.X_JSON_HEADER_SCHEMA_ID;
 
 public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerializer<T> implements Serializer<T> {
     private boolean schemaInHeaders;

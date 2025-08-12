@@ -13,7 +13,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package org.logart;
+package com.github.logart;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import static org.logart.JsonHeaderSchemaConverter.X_JSON_HEADER_SCHEMA_ID;
+import static com.github.logart.JsonHeaderSchemaConverter.X_JSON_HEADER_SCHEMA_ID;
 
 /**
  * Generic JSON deserializer.
