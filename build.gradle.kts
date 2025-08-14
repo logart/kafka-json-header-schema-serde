@@ -1,9 +1,10 @@
 plugins {
     id("java")
+    id("maven-publish")
 }
 
 group = "com.github.logart"
-version = "1.0-SNAPSHOT"
+version = "1.5-SNAPSHOT"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -17,8 +18,8 @@ repositories {
     }
 }
 
-val kafkaVersion = "3.8.0"
-val confluentVersion = "7.9.1"
+val kafkaVersion = "3.6.0"
+val confluentVersion = "7.5.9"
 
 dependencies {
     compileOnly("org.apache.kafka:connect-api:${kafkaVersion}")  // provided scope in Maven

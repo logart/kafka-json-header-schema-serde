@@ -15,12 +15,13 @@
 
 package com.github.logart;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.entities.RuleMode;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
-import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
+import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
 import org.apache.kafka.common.errors.InvalidConfigurationException;
 import org.apache.kafka.common.errors.SerializationException;
@@ -39,6 +40,13 @@ import java.util.function.Function;
 import static com.github.logart.JsonHeaderSchemaConverter.X_JSON_HEADER_SCHEMA_ID;
 
 public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerializer<T> implements Serializer<T> {
+
+    private static int DEFAULT_CACHE_CAPACITY = 1000;
+
+    private boolean isKey;
+    private Map<ObjectNode, JsonSchema> nodeToSchemaCache;
+    private Map<Class<?>, JsonSchema> classToSchemaCache;
+
     private boolean schemaInHeaders;
     private boolean modifyPayload;
 
@@ -66,6 +74,29 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
     }
 
     @Override
+    public byte[] serialize(String topic, T record) {
+        return serialize(topic, null, record);
+    }
+
+    @Override
+    public byte[] serialize(String topic, Headers headers, T record) {
+        if (record == null) {
+            return null;
+        }
+        JsonSchema schema;
+        if (JsonSchemaUtils.isEnvelope(record)) {
+            schema = nodeToSchemaCache.computeIfAbsent(
+                    JsonSchemaUtils.copyEnvelopeWithoutPayload((ObjectNode) record),
+                    k -> getSchema(record));
+        } else {
+            schema = classToSchemaCache.computeIfAbsent(record.getClass(), k -> getSchema(record));
+        }
+        Object value = JsonSchemaUtils.getValue(record);
+        return serializeImpl(
+                getSubjectName(topic, isKey, value, schema), topic, headers, (T) value, schema);
+    }
+
+    @SuppressWarnings("unchecked")
     protected byte[] serializeImpl(
             String subject,
             String topic,
@@ -92,7 +123,7 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
             if (autoRegisterSchema) {
                 restClientErrorMsg = "Error registering JSON schema: ";
                 io.confluent.kafka.schemaregistry.client.rest.entities.Schema s =
-                        registerWithResponse(subject, schema, normalizeSchema, propagateSchemaTags);
+                        registerWithResponse(subject, schema, normalizeSchema);
                 if (s.getSchema() != null) {
                     Optional<ParsedSchema> optSchema = schemaRegistry.parseSchema(s);
                     if (optSchema.isPresent()) {
@@ -122,7 +153,7 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
             }
             object = (T) executeRules(subject, topic, headers, RuleMode.WRITE, null, schema, object);
             if (validate) {
-                object = validateJson(object, schema);
+                validateJson(object, schema);
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             // write schema id to headers, all other implementation stays the same
@@ -148,9 +179,13 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private <V> V getOrDefault(Map<String, ?> config, String key, V defaultValue) {
-        return getOrDefault(config, key, v -> (V) v, defaultValue);
+    private JsonSchema getSchema(T record) {
+        try {
+            return JsonSchemaUtils.getSchema(record, specVersion, scanPackages, oneofForNullables,
+                    failUnknownProperties, objectMapper, schemaRegistry);
+        } catch (IOException e) {
+            throw new SerializationException(e);
+        }
     }
 
     private <V> V getOrDefault(Map<String, ?> config, String key, Function<String, V> mapper, V defaultValue) {

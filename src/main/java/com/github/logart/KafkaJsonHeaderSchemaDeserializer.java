@@ -17,9 +17,9 @@ package com.github.logart;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.annotations.VisibleForTesting;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.rest.entities.Metadata;
 import io.confluent.kafka.schemaregistry.client.rest.entities.RuleMode;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
@@ -68,6 +68,7 @@ public class KafkaJsonHeaderSchemaDeserializer<T> extends KafkaJsonSchemaDeseria
         super(client, props);
     }
 
+    @VisibleForTesting
     public KafkaJsonHeaderSchemaDeserializer(SchemaRegistryClient client, Map<String, ?> props, Class<T> type) {
         super(client, props, type);
     }
@@ -166,7 +167,7 @@ public class KafkaJsonHeaderSchemaDeserializer<T> extends KafkaJsonSchemaDeseria
                     if (jsonNode == null) {
                         jsonNode = objectMapper.readValue(buffer.array(), start, length, JsonNode.class);
                     }
-                    jsonNode = schema.validate(jsonNode);
+                    schema.validate(jsonNode);
                 } catch (JsonProcessingException | ValidationException e) {
                     throw new SerializationException("JSON "
                             + jsonNode
@@ -241,18 +242,12 @@ public class KafkaJsonHeaderSchemaDeserializer<T> extends KafkaJsonSchemaDeseria
     private Integer schemaVersion(
             String topic, boolean isKey, int id, String subject, JsonSchema schema, Object value
     ) throws IOException, RestClientException {
-        Integer version = null;
+        Integer version;
         if (isDeprecatedSubjectNameStrategy(isKey)) {
             subject = getSubjectName(topic, isKey, value, schema);
         }
         JsonSchema subjectSchema = (JsonSchema) schemaRegistry.getSchemaBySubjectAndId(subject, id);
-        Metadata metadata = subjectSchema.metadata();
-        if (metadata != null) {
-            version = metadata.getConfluentVersionNumber();
-        }
-        if (version == null) {
-            version = schemaRegistry.getVersion(subject, subjectSchema);
-        }
+        version = schemaRegistry.getVersion(subject, subjectSchema);
         return version;
     }
 
@@ -302,11 +297,6 @@ public class KafkaJsonHeaderSchemaDeserializer<T> extends KafkaJsonSchemaDeseria
         return isDeprecatedSubjectNameStrategy(isKey)
                 ? JsonSchemaUtils.copyOf(schemaFromRegistry)
                 : (JsonSchema) schemaRegistry.getSchemaBySubjectAndId(subject, id);
-    }
-
-    @SuppressWarnings("unchecked")
-    private <V> V getOrDefault(Map<String, ?> config, String key, V defaultValue) {
-        return getOrDefault(config, key, v -> (V) v, defaultValue);
     }
 
     private <V> V getOrDefault(Map<String, ?> config, String key, Function<String, V> mapper, V defaultValue) {
