@@ -186,8 +186,12 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
 
     private JsonSchema getSchema(T record) {
         try {
-            return JsonSchemaUtils.getSchema(record, specVersion, scanPackages, oneofForNullables,
+            JsonSchema schema = JsonSchemaUtils.getSchema(record, specVersion, scanPackages, oneofForNullables,
                     failUnknownProperties, objectMapper, schemaRegistry);
+            String rawSchemaStr = schema.canonicalString();
+            ObjectNode schemaJson = (ObjectNode) objectMapper.readTree(rawSchemaStr);
+            schemaJson.put("title", schemaJson.get("title").asText().replaceAll(" ", ""));
+            return new JsonSchema(schemaJson);
         } catch (IOException e) {
             throw new SerializationException(e);
         }
