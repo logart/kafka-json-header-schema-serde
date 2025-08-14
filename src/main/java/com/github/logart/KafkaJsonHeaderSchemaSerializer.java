@@ -22,6 +22,7 @@ import io.confluent.kafka.schemaregistry.client.rest.entities.RuleMode;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
+import io.confluent.kafka.schemaregistry.utils.BoundedConcurrentHashMap;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
 import org.apache.kafka.common.errors.InvalidConfigurationException;
 import org.apache.kafka.common.errors.SerializationException;
@@ -52,18 +53,26 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
 
     public KafkaJsonHeaderSchemaSerializer() {
         super();
+        this.nodeToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
+        this.classToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
     }
 
     public KafkaJsonHeaderSchemaSerializer(SchemaRegistryClient client) {
         super(client);
+        this.nodeToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
+        this.classToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
     }
 
     public KafkaJsonHeaderSchemaSerializer(SchemaRegistryClient client, Map<String, ?> props) {
         super(client, props);
+        this.nodeToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
+        this.classToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
     }
 
     public KafkaJsonHeaderSchemaSerializer(SchemaRegistryClient client, Map<String, ?> props, int cacheCapacity) {
         super(client, props, cacheCapacity);
+        this.nodeToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
+        this.classToSchemaCache = new BoundedConcurrentHashMap<>(DEFAULT_CACHE_CAPACITY);
     }
 
     @Override
@@ -74,11 +83,7 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
     }
 
     @Override
-    public byte[] serialize(String topic, T record) {
-        return serialize(topic, null, record);
-    }
-
-    @Override
+    @SuppressWarnings("unchecked")
     public byte[] serialize(String topic, Headers headers, T record) {
         if (record == null) {
             return null;
