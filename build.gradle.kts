@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.github.logart"
-version = "1.8-SNAPSHOT"
+version = "1.12"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -26,6 +26,7 @@ dependencies {
 
     implementation("io.confluent:kafka-json-schema-serializer:${confluentVersion}")
     implementation("io.confluent:kafka-connect-json-schema-converter:${confluentVersion}")
+    implementation("io.confluent:kafka-connect-storage-partitioner:5.5.12")
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
@@ -35,6 +36,29 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.assertj:assertj-core:3.26.3")
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/logart/kafka-json-header-schema-serde")
+            credentials {
+                username = "logart2007"
+                password = "TODO_ADD_PASSWORD_HERE" // Replace with your GitHub token
+            }
+        }
+    }
+    publications {
+        register<MavenPublication>("maven") {
+            from(components["java"])
+
+            // Optional: customize the artifact details
+            groupId = "com.github.logart"
+            artifactId = "kafka-json-header-schema-serde"
+            version = version
+        }
+    }
 }
 
 tasks {
