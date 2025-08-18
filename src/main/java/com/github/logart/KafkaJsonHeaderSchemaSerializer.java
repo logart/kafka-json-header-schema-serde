@@ -15,6 +15,7 @@
 
 package com.github.logart;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
@@ -34,6 +35,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -191,6 +193,19 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
             String rawSchemaStr = schema.canonicalString();
             ObjectNode schemaJson = (ObjectNode) objectMapper.readTree(rawSchemaStr);
             schemaJson.put("title", schemaJson.get("title").asText().replaceAll(" ", ""));
+
+            Iterator<Map.Entry<String, JsonNode>> properties = schemaJson.get("properties").fields();
+            while (properties.hasNext()) {
+                Map.Entry<String, JsonNode> property = properties.next();
+                Iterator<Map.Entry<String, JsonNode>> propertyFields = property.getValue().fields();
+                while (propertyFields.hasNext()) {
+                    Map.Entry<String, JsonNode> nestedProperty = propertyFields.next();
+                    if ("additionalProperties".equals(nestedProperty.getKey())) {
+                        properties.remove();
+                    }
+                }
+            }
+            schemaJson.remove("additionalProperties");
             return new JsonSchema(schemaJson);
         } catch (IOException e) {
             throw new SerializationException(e);
