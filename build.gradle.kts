@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.github.logart"
-version = "1.5-SNAPSHOT"
+version = "1.8-SNAPSHOT"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17

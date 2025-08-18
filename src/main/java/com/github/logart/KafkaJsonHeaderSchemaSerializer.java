@@ -194,22 +194,34 @@ public class KafkaJsonHeaderSchemaSerializer<T> extends KafkaJsonSchemaSerialize
             ObjectNode schemaJson = (ObjectNode) objectMapper.readTree(rawSchemaStr);
             schemaJson.put("title", schemaJson.get("title").asText().replaceAll(" ", ""));
 
-            Iterator<Map.Entry<String, JsonNode>> properties = schemaJson.get("properties").fields();
-            while (properties.hasNext()) {
-                Map.Entry<String, JsonNode> property = properties.next();
-                Iterator<Map.Entry<String, JsonNode>> propertyFields = property.getValue().fields();
-                while (propertyFields.hasNext()) {
-                    Map.Entry<String, JsonNode> nestedProperty = propertyFields.next();
-                    if ("additionalProperties".equals(nestedProperty.getKey())) {
-                        properties.remove();
-                    }
-                }
-            }
+            JsonNode properties = schemaJson.get("properties");
+            removeAdditionalProperties(properties);
             schemaJson.remove("additionalProperties");
             return new JsonSchema(schemaJson);
         } catch (IOException e) {
             throw new SerializationException(e);
         }
+    }
+
+    private boolean removeAdditionalProperties(JsonNode node) {
+        boolean removed = false;
+        Iterator<JsonNode> elements = node.elements();
+        while (elements.hasNext()) {
+            JsonNode element = elements.next();
+            Iterator<Map.Entry<String, JsonNode>> propertyFields = element.fields();
+            while (propertyFields.hasNext()) {
+                Map.Entry<String, JsonNode> nestedProperty = propertyFields.next();
+                if ("additionalProperties".equals(nestedProperty.getKey())) {
+                    elements.remove();
+                    removed = true;
+                }
+                if (removeAdditionalProperties(nestedProperty.getValue())) {
+                    elements.remove();
+                    removed = true;
+                }
+            }
+        }
+        return removed;
     }
 
     private <V> V getOrDefault(Map<String, ?> config, String key, Function<String, V> mapper, V defaultValue) {
